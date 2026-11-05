@@ -1,4 +1,4 @@
-using System.Drawing;
+﻿using System.Drawing;
 using System.Windows.Forms;
 
 namespace DynamicIsland.Services;
@@ -6,49 +6,37 @@ namespace DynamicIsland.Services;
 public sealed class TrayService : IDisposable
 {
     private readonly NotifyIcon _icon;
-    private readonly Settings _settings;
-    private readonly ToolStripMenuItem _themesMenu = new("Tema");
-    private readonly ToolStripMenuItem _startupItem = new("Iniciar con Windows");
 
-    public TrayService(Settings settings)
+    public TrayService(Action openSettings)
     {
-        _settings = settings;
-
-        foreach (var theme in Themes.All)
-        {
-            var item = new ToolStripMenuItem(theme.Name) { Checked = theme.Name == settings.Theme };
-            item.Click += (_, _) => SelectTheme(theme, item);
-            _themesMenu.DropDownItems.Add(item);
-        }
-
-        _startupItem.Checked = Startup.IsEnabled();
-        _startupItem.Click += (_, _) =>
-        {
-            Startup.Set(!_startupItem.Checked);
-            _startupItem.Checked = Startup.IsEnabled();
-        };
+        var settingsItem = new ToolStripMenuItem("Configuración…");
+        settingsItem.Click += (_, _) => openSettings();
 
         var exit = new ToolStripMenuItem("Salir");
         exit.Click += (_, _) => System.Windows.Application.Current.Shutdown();
 
         var menu = new ContextMenuStrip();
-        menu.Items.AddRange(new ToolStripItem[] { _themesMenu, _startupItem, new ToolStripSeparator(), exit });
+        menu.Items.AddRange(new ToolStripItem[] { settingsItem, new ToolStripSeparator(), exit });
 
         _icon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = LoadIcon(),
             Text = "Dynamic Island",
             ContextMenuStrip = menu,
             Visible = true
         };
+        _icon.DoubleClick += (_, _) => openSettings();
     }
 
-    private void SelectTheme(IslandTheme theme, ToolStripMenuItem selected)
+    private static Icon LoadIcon()
     {
-        foreach (ToolStripMenuItem i in _themesMenu.DropDownItems) i.Checked = i == selected;
-        Themes.Apply(theme);
-        _settings.Theme = theme.Name;
-        _settings.Save();
+        try
+        {
+            var info = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico"));
+            if (info != null) return new Icon(info.Stream, new Size(32, 32));
+        }
+        catch { }
+        return SystemIcons.Application;
     }
 
     public void Dispose()

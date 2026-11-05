@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
 namespace DynamicIsland.Interop;
 
@@ -37,4 +37,62 @@ internal static class Win32
     public static void ReassertTopmost(IntPtr hwnd)
         => SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+    // ---- Detección de ventana maximizada / pantalla completa ----
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder s, int n);
+    [DllImport("user32.dll")] private static extern bool GetWindowRect(IntPtr hWnd, out RECT r);
+    [DllImport("user32.dll")] private static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint flags);
+    [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
+    [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr hMon, ref MONITORINFO mi);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hWnd, int attr, out int value, int size);
+
+    [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MONITORINFO { public int cbSize; public RECT rcMonitor, rcWork; public uint dwFlags; }
+
+    private const uint MONITOR_DEFAULTTONEAREST = 2, MONITOR_DEFAULTTOPRIMARY = 1;
+    private const int DWMWA_CLOAKED = 14;
+
+    /// <summary>
+    /// true: la ventana en primer plano está maximizada o a pantalla completa en el monitor principal.
+    /// false: no lo está. null: ventana de shell (escritorio, barra de tareas, etc.) o propia; conservar el estado anterior.
+    /// </summary>
+    public static bool? ForegroundIsMaximizedOnPrimary(uint ownPid)
+    {
+        var hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return null;
+        GetWindowThreadProcessId(hwnd, out uint pid);
+        if (pid == ownPid) return null;
+
+        var cls = new System.Text.StringBuilder(64);
+        GetClassName(hwnd, cls, cls.Capacity);
+        switch (cls.ToString())
+        {
+            case "Progman": case "WorkerW": case "Shell_TrayWnd": case "Shell_SecondaryTrayWnd":
+            case "NotifyIconOverflowWindow": case "TopLevelWindowForOverflowXamlIsland":
+            case "XamlExplorerHostIslandWindow": case "Windows.UI.Core.CoreWindow":
+                return null;
+        }
+
+        if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return false;
+        if (DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return false;
+
+        var primary = MonitorFromPoint(new POINT(), MONITOR_DEFAULTTOPRIMARY);
+        if (MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST) != primary) return false;
+
+        if (IsZoomed(hwnd)) return true;
+
+        // Pantalla completa sin borde (juegos, vídeo): la ventana cubre todo el monitor.
+        var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        if (GetMonitorInfo(primary, ref mi) && GetWindowRect(hwnd, out var r))
+            return r.Left <= mi.rcMonitor.Left && r.Top <= mi.rcMonitor.Top &&
+                   r.Right >= mi.rcMonitor.Right && r.Bottom >= mi.rcMonitor.Bottom;
+        return false;
+    }
 }

@@ -10,12 +10,15 @@
 
     <Grid>
         <!-- Píldora: el único elemento visible y con hit-test. Se anima con el spring. -->
+        <!-- Área de hover: alfa 1 para que reciba el mouse (alfa 0 sería click-through) y una zona cómoda en modo barra. -->
+        <Grid x:Name="Hover" Background="#01000000" HorizontalAlignment="Center" VerticalAlignment="Top">
         <Border x:Name="Pill" Background="{DynamicResource IslandBackground}"
                 HorizontalAlignment="Center" VerticalAlignment="Top"
                 Width="130" Height="34" CornerRadius="17" ClipToBounds="True"
                 Margin="0,6,0,0">
             <Grid>
                 <!-- Colapsado -->
+                <Grid x:Name="CollapsedHost">
                 <StackPanel x:Name="CollapsedView" Orientation="Horizontal"
                             HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock x:Name="CollapsedTime" Foreground="{DynamicResource IslandPrimary}"
@@ -23,6 +26,30 @@
                     <Border x:Name="PlayingDot" Width="7" Height="7" CornerRadius="3.5" Margin="9,1,0,0"
                             Background="{DynamicResource IslandAccent}" Visibility="Collapsed"/>
                 </StackPanel>
+
+                <!-- Colapsado modo ancho: carátula | título | hora -->
+                <Grid x:Name="WideView" Width="300" Height="38" Visibility="Collapsed"
+                      HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Width="26" Height="26" CornerRadius="6" ClipToBounds="True" Margin="9,0,0,0"
+                            Background="{DynamicResource IslandTrack}">
+                        <Grid>
+                            <TextBlock Text="&#xE8D6;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets"
+                                       FontSize="13" Foreground="{DynamicResource IslandSecondary}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Image x:Name="WideCover" Stretch="UniformToFill"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock x:Name="WideTitle" Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource IslandSecondary}" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="WideTime" Grid.Column="2" Margin="0,0,16,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource IslandPrimary}" FontSize="14" FontWeight="SemiBold"/>
+                </Grid>
+                </Grid>
 
                 <!-- Expandido -->
                 <Grid x:Name="ExpandedView" Opacity="0" IsHitTestVisible="False"
@@ -57,8 +84,14 @@
                                        FontSize="12.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
 
-                        <TextBlock Grid.Column="2" x:Name="ExpandedTime" VerticalAlignment="Top"
-                                   Foreground="{DynamicResource IslandSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Top" HorizontalAlignment="Right">
+                            <TextBlock x:Name="ExpandedTime" HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource IslandSecondary}" FontSize="12" FontWeight="SemiBold"/>
+                            <Button x:Name="SettingsBtn" Style="{StaticResource IconButton}" Content="&#xE713;"
+                                    FontSize="14" Width="30" Height="30" Margin="0,6,-4,0"
+                                    HorizontalAlignment="Right" ToolTip="Ajustes"
+                                    Foreground="{DynamicResource IslandSecondary}"/>
+                        </StackPanel>
                     </Grid>
 
                     <Grid Grid.Row="1" Margin="16,10,16,0">
@@ -86,5 +119,6 @@
                 </Grid>
             </Grid>
         </Border>
+        </Grid>
     </Grid>
 </Window>

@@ -1,4 +1,4 @@
-namespace DynamicIsland.Animation;
+﻿namespace DynamicIsland.Animation;
 
 /// <summary>Integrador masa-resorte-amortiguador (semi-implicit Euler, paso fijo).</summary>
 public sealed class SpringAnimator
@@ -8,6 +8,9 @@ public sealed class SpringAnimator
     public double Stiffness { get; set; } = 420;
     public double Damping { get; set; } = 28;
     public double Mass { get; set; } = 1;
+
+    /// <summary>Umbral de reposo (en unidades del valor animado).</summary>
+    public double Epsilon { get; set; } = 0.001;
 
     public double Value { get; private set; }
     public double Velocity { get; private set; }
@@ -26,7 +29,16 @@ public sealed class SpringAnimator
         IsSettled = false;
     }
 
-    /// <summary>Avanza la simulación dt segundos. Devuelve true mientras siga en movimiento.</summary>
+    /// <summary>Coloca el valor al instante, sin animar.</summary>
+    public void Snap(double value)
+    {
+        Value = value;
+        Target = value;
+        Velocity = 0;
+        IsSettled = true;
+    }
+
+    /// <summary>Avanza la simulaciÃ³n dt segundos. Devuelve true mientras siga en movimiento.</summary>
     public bool Update(double dt)
     {
         if (IsSettled) return false;
@@ -39,7 +51,7 @@ public sealed class SpringAnimator
             Value += Velocity * h;
             remaining -= h;
         }
-        if (Math.Abs(Velocity) < 0.05 && Math.Abs(Value - Target) < 0.05)
+        if (Math.Abs(Velocity) < Epsilon && Math.Abs(Value - Target) < Epsilon)
         {
             Value = Target;
             Velocity = 0;
@@ -48,3 +60,4 @@ public sealed class SpringAnimator
         return !IsSettled;
     }
 }
+

@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Windows;
 using DynamicIsland.Services;
 
@@ -19,10 +19,12 @@ public partial class App : Application
         var settings = Settings.Load();
         Themes.Apply(Themes.Find(settings.Theme));
 
-        var window = new MainWindow();
+        settings.Changed += () => Themes.Apply(Themes.Find(settings.Theme), animate: true);
+
+        var window = new MainWindow(settings);
         window.Show();
 
-        _tray = new TrayService(settings);
+        _tray = new TrayService(() => SettingsWindow.ShowSingle(settings));
     }
 
     protected override void OnExit(ExitEventArgs e)
