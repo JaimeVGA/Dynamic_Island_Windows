@@ -1,0 +1,66 @@
+# Salida de compilación
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+artifacts/
+
+# Visual Studio / VS Code / Rider
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.DotSettings.user
+*.rsuser
+
+# Resultados de pruebas y cobertura
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+coverage*.xml
+*.coverage
+*.coveragexml
+
+# Paquetes y caches de NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# Logs y temporales
+*.log
+*.tmp
+*.temp
+*.bak
+*.swp
+~$*
+
+# Perfiles de publicación (pueden contener credenciales)
+*.pubxml
+*.pubxml.user
+PublishScripts/
+
+# Secretos y datos privados
+.env
+.env.*
+*.pfx
+*.p12
+*.snk
+*.key
+*.pem
+secrets.json
+appsettings.*.local.json
+
+# Carpeta de Antigravity / agentes
+.gemini/
+.agent/
+.agents/
+
+# Archivos del sistema
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
