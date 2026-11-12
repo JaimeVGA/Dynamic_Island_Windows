@@ -38,8 +38,9 @@ internal static class Win32
         => SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
 
-    // ---- Detección de ventana maximizada / pantalla completa ----
+    // ---- Detección de ventana maximizada / pantalla completa / acoplada (snap) ----
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
     [DllImport("user32.dll")] private static extern bool IsZoomed(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern bool IsIconic(IntPtr hWnd);
@@ -50,6 +51,7 @@ internal static class Win32
     [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(POINT pt, uint flags);
     [DllImport("user32.dll")] private static extern bool GetMonitorInfo(IntPtr hMon, ref MONITORINFO mi);
     [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hWnd, int attr, out int value, int size);
+    [DllImport("dwmapi.dll")] private static extern int DwmGetWindowAttribute(IntPtr hWnd, int attr, out RECT r, int size);
 
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X, Y; }
@@ -57,11 +59,13 @@ internal static class Win32
     private struct MONITORINFO { public int cbSize; public RECT rcMonitor, rcWork; public uint dwFlags; }
 
     private const uint MONITOR_DEFAULTTONEAREST = 2, MONITOR_DEFAULTTOPRIMARY = 1;
+    private const uint GA_ROOT = 2;
     private const int DWMWA_CLOAKED = 14;
+    private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
 
     /// <summary>
-    /// true: la ventana en primer plano está maximizada o a pantalla completa en el monitor principal.
-    /// false: no lo está. null: ventana de shell (escritorio, barra de tareas, etc.) o propia; conservar el estado anterior.
+    /// true: la ventana en primer plano está maximizada, a pantalla completa o acoplada (snap/pantalla dividida) en el monitor principal.
+    /// false: no lo está. null: ventana de shell (barra de tareas, etc.) o propia; conservar el estado anterior.
     /// </summary>
     public static bool? ForegroundIsMaximizedOnPrimary(uint ownPid)
     {
@@ -72,13 +76,24 @@ internal static class Win32
 
         var cls = new System.Text.StringBuilder(64);
         GetClassName(hwnd, cls, cls.Capacity);
-        switch (cls.ToString())
+        string clsName = cls.ToString();
+
+        // En el escritorio no hay ventanas maximizadas ni acopladas activas
+        if (clsName == "Progman" || clsName == "WorkerW")
+            return false;
+
+        // Elementos del sistema donde conservamos el estado previo mientras el usuario interactúa con ellos
+        switch (clsName)
         {
-            case "Progman": case "WorkerW": case "Shell_TrayWnd": case "Shell_SecondaryTrayWnd":
+            case "Shell_TrayWnd": case "Shell_SecondaryTrayWnd":
             case "NotifyIconOverflowWindow": case "TopLevelWindowForOverflowXamlIsland":
             case "XamlExplorerHostIslandWindow": case "Windows.UI.Core.CoreWindow":
                 return null;
         }
+
+        // Obtener la ventana raíz por si el foco está en un control o diálogo hijo
+        IntPtr root = GetAncestor(hwnd, GA_ROOT);
+        if (root != IntPtr.Zero) hwnd = root;
 
         if (!IsWindowVisible(hwnd) || IsIconic(hwnd)) return false;
         if (DwmGetWindowAttribute(hwnd, DWMWA_CLOAKED, out int cloaked, sizeof(int)) == 0 && cloaked != 0) return false;
@@ -88,11 +103,42 @@ internal static class Win32
 
         if (IsZoomed(hwnd)) return true;
 
-        // Pantalla completa sin borde (juegos, vídeo): la ventana cubre todo el monitor.
         var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-        if (GetMonitorInfo(primary, ref mi) && GetWindowRect(hwnd, out var r))
-            return r.Left <= mi.rcMonitor.Left && r.Top <= mi.rcMonitor.Top &&
-                   r.Right >= mi.rcMonitor.Right && r.Bottom >= mi.rcMonitor.Bottom;
+        if (!GetMonitorInfo(primary, ref mi)) return false;
+
+        RECT r;
+        if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out r, Marshal.SizeOf<RECT>()) != 0 || r.Right <= r.Left || r.Bottom <= r.Top)
+        {
+            if (!GetWindowRect(hwnd, out r)) return false;
+        }
+
+        // 1. Pantalla completa sin borde (juegos, vídeos a pantalla completa)
+        if (r.Left <= mi.rcMonitor.Left + 5 && r.Top <= mi.rcMonitor.Top + 5 &&
+            r.Right >= mi.rcMonitor.Right - 5 && r.Bottom >= mi.rcMonitor.Bottom - 5)
+        {
+            return true;
+        }
+
+        // 2. Ventana acoplada / Snap / Pantalla dividida (ej. 2 pestañas/ventanas lado a lado)
+        // En Windows 11, las ventanas acopladas tocan el borde superior del área de trabajo
+        // y tienen una altura y anchura sustanciales que invaden el área superior de la pantalla.
+        int workTop = mi.rcWork.Top;
+        int workBottom = mi.rcWork.Bottom;
+        int workHeight = workBottom - workTop;
+        int workWidth = mi.rcWork.Right - mi.rcWork.Left;
+
+        int winWidth = r.Right - r.Left;
+        int winHeight = r.Bottom - r.Top;
+
+        bool touchesTop = r.Top <= workTop + 15 && Math.Abs(r.Top - workTop) <= 25;
+        bool substantialHeight = winHeight >= workHeight * 0.40;
+        bool substantialWidth = winWidth >= workWidth * 0.25;
+
+        if (touchesTop && substantialHeight && substantialWidth)
+        {
+            return true;
+        }
+
         return false;
     }
 }

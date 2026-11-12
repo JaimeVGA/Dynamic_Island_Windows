@@ -12,11 +12,11 @@ Una "Dynamic Island" ligera para el escritorio de Windows 11. Es una píldora fl
   - **Barra ancha:** carátula, título y hora siempre visibles.
 - **Vista expandida (hover):** carátula, título, artista, barra de progreso, controles (anterior, play/pausa, siguiente) y un botón de ajustes.
 - **Modo automático:** cambia solo de modo según la situación:
-  - cuando hay una **app maximizada** o a pantalla completa en el monitor principal,
+  - cuando hay una **app maximizada, a pantalla completa o acoplada (pantalla dividida / 2 ventanas)** en el monitor principal,
   - cuando **suena música**,
   - cuando estás en el **escritorio**.
 
-  Prioridad: app maximizada, luego música, luego escritorio.
+  Prioridad: app maximizada o acoplada, luego música, luego escritorio.
 - **15 temas de color**, con cambio animado.
 - **Reloj** en formato de 12 h o 24 h.
 - **Iniciar con Windows** (opcional).

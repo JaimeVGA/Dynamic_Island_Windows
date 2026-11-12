@@ -31,7 +31,7 @@ public partial class MainWindow : Window
     private IntPtr _hwnd;
     private IslandMode _mode = IslandMode.Classic;
     private bool _hasMaximized;
-    private readonly DispatcherTimer _foregroundTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
+    private readonly DispatcherTimer _foregroundTimer = new() { Interval = TimeSpan.FromMilliseconds(450) };
     private bool _expanded;
     private bool _animating;
     private TimeSpan _lastTick;

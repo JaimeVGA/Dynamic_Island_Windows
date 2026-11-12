@@ -52,9 +52,9 @@ public partial class SettingsWindow : Window
 
     private void BuildAutoRows()
     {
-        AddAutoRow("Con una app maximizada", () => _settings.ModeMaximized, m => _settings.ModeMaximized = m, "grpMax");
+        AddAutoRow("Con app maximizada o acoplada (pantalla dividida / 2 pestañas)", () => _settings.ModeMaximized, m => _settings.ModeMaximized = m, "grpMax");
         AddAutoRow("Cuando suena música", () => _settings.ModePlaying, m => _settings.ModePlaying = m, "grpPlay");
-        AddAutoRow("En el escritorio (sin música ni apps maximizadas)", () => _settings.ModeIdle, m => _settings.ModeIdle = m, "grpIdle");
+        AddAutoRow("En el escritorio (sin música ni apps maximizadas/acopladas)", () => _settings.ModeIdle, m => _settings.ModeIdle = m, "grpIdle");
     }
 
     private void AddAutoRow(string label, Func<IslandMode> get, Action<IslandMode> set, string group)

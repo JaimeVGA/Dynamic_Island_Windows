@@ -69,8 +69,8 @@
             <TextBlock Text="Configuración" FontSize="24" FontWeight="SemiBold"/>
 
             <TextBlock Text="MODO AUTOMÁTICO" Style="{StaticResource Section}"/>
-            <CheckBox x:Name="AutoBox" Content="Cambiar de modo según la reproducción"/>
-            <TextBlock Text="Prioridad: app maximizada, luego música, luego escritorio." Foreground="#71717A" FontSize="12" Margin="0,0,0,6"/>
+            <CheckBox x:Name="AutoBox" Content="Cambiar de modo según la reproducción y ventanas"/>
+            <TextBlock Text="Prioridad: app maximizada o acoplada, luego música, luego escritorio." Foreground="#71717A" FontSize="12" Margin="0,0,0,6"/>
             <StackPanel x:Name="AutoPanel"/>
 
             <TextBlock Text="MODO" Style="{StaticResource Section}"/>
