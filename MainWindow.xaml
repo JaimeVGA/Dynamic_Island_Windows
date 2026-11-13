@@ -10,8 +10,6 @@
 
     <Grid>
         <!-- Píldora: el único elemento visible y con hit-test. Se anima con el spring. -->
-        <!-- Área de hover: alfa 1 para que reciba el mouse (alfa 0 sería click-through) y una zona cómoda en modo barra. -->
-        <Grid x:Name="Hover" Background="#01000000" HorizontalAlignment="Center" VerticalAlignment="Top">
         <Border x:Name="Pill" Background="{DynamicResource IslandBackground}"
                 HorizontalAlignment="Center" VerticalAlignment="Top"
                 Width="130" Height="34" CornerRadius="17" ClipToBounds="True"
@@ -119,6 +117,5 @@
                 </Grid>
             </Grid>
         </Border>
-        </Grid>
     </Grid>
 </Window>

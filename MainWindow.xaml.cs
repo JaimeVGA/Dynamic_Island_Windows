@@ -45,9 +45,9 @@ public partial class MainWindow : Window
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
 
-        Hover.MouseEnter += (_, _) => { _collapseDelay.Stop(); SetExpanded(true); };
-        Hover.MouseLeave += (_, _) => { _collapseDelay.Stop(); _collapseDelay.Start(); };
-        _collapseDelay.Tick += (_, _) => { _collapseDelay.Stop(); if (!Hover.IsMouseOver) SetExpanded(false); };
+        Pill.MouseEnter += (_, _) => { _collapseDelay.Stop(); SetExpanded(true); };
+        Pill.MouseLeave += (_, _) => { _collapseDelay.Stop(); _collapseDelay.Start(); };
+        _collapseDelay.Tick += (_, _) => { _collapseDelay.Stop(); if (!Pill.IsMouseOver) SetExpanded(false); };
         _settings.Changed += () => { ApplyMode(); UpdateClock(); };
 
         PrevBtn.Click += async (_, _) => await _media.PreviousAsync();
@@ -102,9 +102,9 @@ public partial class MainWindow : Window
                 long l = lParam.ToInt64();
                 int x = (short)(l & 0xFFFF);
                 int y = (short)((l >> 16) & 0xFFFF);
-                var local = Hover.PointFromScreen(new Point(x, y));
+                var local = Pill.PointFromScreen(new Point(x, y));
                 bool inside = local.X >= 0 && local.Y >= 0 &&
-                              local.X <= Hover.ActualWidth && local.Y <= Hover.ActualHeight;
+                              local.X <= Pill.ActualWidth && local.Y <= Pill.ActualHeight;
                 handled = true;
                 return (IntPtr)(inside ? Win32.HTCLIENT : Win32.HTTRANSPARENT);
         }
@@ -214,10 +214,6 @@ public partial class MainWindow : Window
         Pill.Height = h;
         Pill.Margin = new Thickness(0, top, 0, 0);
         Pill.CornerRadius = new CornerRadius(Math.Clamp(Lerp(collR, ExpandedR, p), Math.Min(collR, ExpandedR), ExpandedR + 6));
-
-        // Zona de hover algo más grande que la píldora (cómoda en modo barra).
-        Hover.Width = Math.Max(w + 16, _mode == IslandMode.Bar ? 150 : 0);
-        Hover.Height = Math.Max(top + h + 8, _mode == IslandMode.Bar ? 20 : 0);
 
         double modeFade = Math.Clamp((_modeSpring.Value - 0.25) / 0.75, 0, 1);
         ExpandedView.Opacity = Math.Clamp((c - 0.45) / 0.55, 0, 1);
