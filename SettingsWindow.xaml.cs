@@ -35,6 +35,7 @@ public partial class SettingsWindow : Window
         StartupBox.Click += (_, _) => { Startup.Set(StartupBox.IsChecked == true); StartupBox.IsChecked = Startup.IsEnabled(); };
 
         BuildThemes();
+        BuildAiSection();
         _loading = false;
     }
 
@@ -135,4 +136,106 @@ public partial class SettingsWindow : Window
 
     private static SolidColorBrush Brush(string hex)
         => new((Color)ColorConverter.ConvertFromString(hex));
+
+    private void BuildAiSection()
+    {
+        ShowAiBox.IsChecked = _settings.ShowAiUsage;
+        AiEndpointBox.Text = _settings.AiCustomEndpoint;
+        AiLimitBox.Text = _settings.AiManualLimitTokens > 0 ? _settings.AiManualLimitTokens.ToString() : "";
+        AiUsedBox.Text = _settings.AiManualUsedTokens > 0 ? _settings.AiManualUsedTokens.ToString() : "";
+        string existingKey = _settings.GetAiApiKey();
+        if (!string.IsNullOrEmpty(existingKey)) AiKeyBox.Password = existingKey;
+
+        double initPct = _settings.AiManualLimitTokens > 0
+            ? Math.Clamp((_settings.AiManualLimitTokens - _settings.AiManualUsedTokens) * 100.0 / _settings.AiManualLimitTokens, 0, 100)
+            : 100;
+        AiPercentSlider.Value = initPct;
+        AiSliderLabel.Text = $"{initPct:0}%";
+
+        AiPercentSlider.ValueChanged += (_, _) =>
+        {
+            if (_loading) return;
+            double pct = AiPercentSlider.Value;
+            AiSliderLabel.Text = $"{pct:0}%";
+            long lim = long.TryParse(AiLimitBox.Text.Trim(), out long l) && l > 0 ? l : 100;
+            long used = (long)Math.Round(lim * (100.0 - pct) / 100.0);
+            if (AiLimitBox.Text.Trim() != lim.ToString()) AiLimitBox.Text = lim.ToString();
+            AiUsedBox.Text = used.ToString();
+            _settings.AiManualLimitTokens = lim;
+            _settings.AiManualUsedTokens = used;
+            _settings.Commit();
+        };
+
+        ShowAiBox.Click += (_, _) =>
+        {
+            _settings.ShowAiUsage = ShowAiBox.IsChecked == true;
+            UpdateAiUiState();
+            _settings.Commit();
+        };
+
+        AiProviderPanel.Children.Clear();
+        foreach (AiProvider provider in Enum.GetValues<AiProvider>())
+        {
+            var chip = new RadioButton
+            {
+                Content = AiUsageService.LabelFor(provider),
+                GroupName = "aiProvider",
+                IsChecked = _settings.AiProvider == provider,
+                Style = (Style)FindResource("Chip"),
+                Margin = new Thickness(0, 0, 8, 6)
+            };
+            chip.Checked += (_, _) =>
+            {
+                if (_loading) return;
+                _settings.AiProvider = provider;
+                UpdateAiUiState();
+                _settings.Commit();
+            };
+            AiProviderPanel.Children.Add(chip);
+        }
+
+        AiSaveTestBtn.Click += async (_, _) =>
+        {
+            _settings.SetAiApiKey(AiKeyBox.Password);
+            _settings.AiCustomEndpoint = AiEndpointBox.Text.Trim();
+            _settings.AiManualLimitTokens = long.TryParse(AiLimitBox.Text.Trim(), out long lim) ? Math.Max(0, lim) : 0;
+            _settings.AiManualUsedTokens = long.TryParse(AiUsedBox.Text.Trim(), out long used) ? Math.Max(0, used) : 0;
+            _settings.Commit();
+
+            AiResultText.Text = "Consultando...";
+            var svc = new AiUsageService();
+            await svc.RefreshAsync(_settings);
+            var q = svc.Current;
+            if (q.HasData)
+            {
+                string val = q.RemainingTokens.HasValue && q.LimitTokens is > 0
+                    ? $"{AiUsageService.FormatTokens(q.RemainingTokens.Value)} / {AiUsageService.FormatTokens(q.LimitTokens.Value)}"
+                    : $"{q.RemainingPercent:0}% restante";
+                AiResultText.Text = $"{q.ProviderName}: {val} ({q.StatusText})";
+            }
+            else
+            {
+                AiResultText.Text = q.StatusText;
+            }
+        };
+
+        UpdateAiUiState();
+    }
+
+    private void UpdateAiUiState()
+    {
+        bool enabled = _settings.ShowAiUsage;
+        AiPanel.IsEnabled = enabled;
+        AiPanel.Opacity = enabled ? 1 : 0.4;
+        AiEndpointPanel.Visibility = _settings.AiProvider == AiProvider.Custom ? Visibility.Visible : Visibility.Collapsed;
+
+        AiHintText.Text = _settings.AiProvider switch
+        {
+            AiProvider.Claude => "Lee automáticamente ~/.claude/.credentials.json (Claude Code) o usa tu API Key / ANTHROPIC_API_KEY.",
+            AiProvider.Codex => "Lee automáticamente ~/.codex/auth.json o sesiones locales de Codex CLI, o usa OPENAI_API_KEY.",
+            AiProvider.Antigravity => "Detecta el modelo activo en ~/.gemini/antigravity-cli. Usa el límite manual para llevar tu presupuesto de tokens.",
+            AiProvider.Custom => "Consulta un endpoint JSON propio (remaining_tokens / limit_tokens / remaining_percent) o usa el límite manual.",
+            _ => ""
+        };
+    }
 }

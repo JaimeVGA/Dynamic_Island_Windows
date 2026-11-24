@@ -101,6 +101,58 @@
             <TextBlock Text="TEMA" Style="{StaticResource Section}"/>
             <WrapPanel x:Name="ThemePanel"/>
 
+            <TextBlock Text="CUOTA DE IA (TOKENS)" Style="{StaticResource Section}"/>
+            <CheckBox x:Name="ShowAiBox" Content="Mostrar tokens restantes en la isla"/>
+            <StackPanel x:Name="AiPanel" Margin="0,4,0,0">
+                <TextBlock Text="Servicio de IA" Foreground="#A1A1AA" FontSize="12" Margin="0,4,0,6"/>
+                <WrapPanel x:Name="AiProviderPanel" Margin="0,0,0,8"/>
+                <TextBlock x:Name="AiHintText" Foreground="#71717A" FontSize="11.5" TextWrapping="Wrap" Margin="0,0,0,8"/>
+
+                <TextBlock Text="API Key (opcional, cifrada localmente)" Foreground="#A1A1AA" FontSize="12" Margin="0,0,0,4"/>
+                <PasswordBox x:Name="AiKeyBox" Background="#27272A" Foreground="#FAFAFA" BorderBrush="#3F3F46"
+                             BorderThickness="1" Padding="8,6" Margin="0,0,0,8"/>
+
+                <StackPanel x:Name="AiEndpointPanel" Margin="0,0,0,8" Visibility="Collapsed">
+                    <TextBlock Text="Endpoint JSON personalizado" Foreground="#A1A1AA" FontSize="12" Margin="0,0,0,4"/>
+                    <TextBox x:Name="AiEndpointBox" Background="#27272A" Foreground="#FAFAFA" BorderBrush="#3F3F46"
+                             BorderThickness="1" Padding="8,6"/>
+                </StackPanel>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Límite manual (tokens, opcional)" Foreground="#A1A1AA" FontSize="12" Margin="0,0,0,4"/>
+                        <TextBox x:Name="AiLimitBox" Background="#27272A" Foreground="#FAFAFA" BorderBrush="#3F3F46"
+                                 BorderThickness="1" Padding="8,6"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Tokens usados (manual)" Foreground="#A1A1AA" FontSize="12" Margin="0,0,0,4"/>
+                        <TextBox x:Name="AiUsedBox" Background="#27272A" Foreground="#FAFAFA" BorderBrush="#3F3F46"
+                                 BorderThickness="1" Padding="8,6"/>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Margin="0,0,0,10">
+                    <Grid Margin="0,0,0,4">
+                        <TextBlock Text="Nivel manual rápido (%)" Foreground="#A1A1AA" FontSize="12"/>
+                        <TextBlock x:Name="AiSliderLabel" Text="100%" Foreground="#FAFAFA" FontSize="12"
+                                   FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                    </Grid>
+                    <Slider x:Name="AiPercentSlider" Minimum="0" Maximum="100" Value="100" TickFrequency="5" IsSnapToTickEnabled="True"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="AiSaveTestBtn" Content="Guardar y actualizar" Background="#2563EB" Foreground="#FFFFFF"
+                            BorderThickness="0" Padding="14,7" Cursor="Hand" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="AiResultText" Foreground="#A1A1AA" FontSize="12" Margin="12,0,0,0" VerticalAlignment="Center"
+                               TextWrapping="Wrap" MaxWidth="310"/>
+                </StackPanel>
+            </StackPanel>
+
             <TextBlock Text="RELOJ" Style="{StaticResource Section}"/>
             <CheckBox x:Name="Use24HourBox" Content="Usar formato de 24 horas"/>
 

@@ -141,4 +141,65 @@ internal static class Win32
 
         return false;
     }
+
+    // ---- Cifrado local DPAPI (sin paquetes NuGet externos) ----
+    [DllImport("crypt32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CryptProtectData(ref DATA_BLOB pDataIn, string? szDataDescr, IntPtr pOptionalEntropy,
+        IntPtr pvReserved, IntPtr pPromptStruct, int dwFlags, out DATA_BLOB pDataOut);
+
+    [DllImport("crypt32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool CryptUnprotectData(ref DATA_BLOB pDataIn, IntPtr ppszDataDescr, IntPtr pOptionalEntropy,
+        IntPtr pvReserved, IntPtr pPromptStruct, int dwFlags, out DATA_BLOB pDataOut);
+
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr LocalFree(IntPtr hMem);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct DATA_BLOB { public int cbData; public IntPtr pbData; }
+
+    public static string ProtectString(string plain)
+    {
+        if (string.IsNullOrEmpty(plain)) return "";
+        byte[] bytes = System.Text.Encoding.UTF8.GetBytes(plain);
+        var inBlob = new DATA_BLOB { cbData = bytes.Length, pbData = Marshal.AllocHGlobal(bytes.Length) };
+        try
+        {
+            Marshal.Copy(bytes, 0, inBlob.pbData, bytes.Length);
+            if (!CryptProtectData(ref inBlob, null, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out var outBlob))
+                return "";
+            try
+            {
+                byte[] res = new byte[outBlob.cbData];
+                Marshal.Copy(outBlob.pbData, res, 0, outBlob.cbData);
+                return Convert.ToBase64String(res);
+            }
+            finally { LocalFree(outBlob.pbData); }
+        }
+        finally { Marshal.FreeHGlobal(inBlob.pbData); }
+    }
+
+    public static string UnprotectString(string encryptedBase64)
+    {
+        if (string.IsNullOrEmpty(encryptedBase64)) return "";
+        try
+        {
+            byte[] bytes = Convert.FromBase64String(encryptedBase64);
+            var inBlob = new DATA_BLOB { cbData = bytes.Length, pbData = Marshal.AllocHGlobal(bytes.Length) };
+            try
+            {
+                Marshal.Copy(bytes, 0, inBlob.pbData, bytes.Length);
+                if (!CryptUnprotectData(ref inBlob, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out var outBlob))
+                    return "";
+                try
+                {
+                    byte[] res = new byte[outBlob.cbData];
+                    Marshal.Copy(outBlob.pbData, res, 0, outBlob.cbData);
+                    return System.Text.Encoding.UTF8.GetString(res);
+                }
+                finally { LocalFree(outBlob.pbData); }
+            }
+            finally { Marshal.FreeHGlobal(inBlob.pbData); }
+        }
+        catch { return ""; }
+    }
 }

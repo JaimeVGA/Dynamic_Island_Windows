@@ -7,12 +7,20 @@ namespace DynamicIsland.Services;
 
 public enum IslandMode
 {
-    /// <summary>PÃ­ldora compacta con la hora (comportamiento original).</summary>
+    /// <summary>Píldora compacta con la hora (comportamiento original).</summary>
     Classic,
     /// <summary>Barra muy delgada arriba; crece al pasar el mouse.</summary>
     Bar,
-    /// <summary>Barra ancha con carÃ¡tula, tÃ­tulo y hora.</summary>
+    /// <summary>Barra ancha con carátula, título y hora.</summary>
     Wide
+}
+
+public enum AiProvider
+{
+    Claude,
+    Codex,
+    Antigravity,
+    Custom
 }
 
 public sealed class Settings
@@ -36,6 +44,20 @@ public sealed class Settings
     /// <summary>Modo cuando hay una app maximizada en el monitor principal.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public IslandMode ModeMaximized { get; set; } = IslandMode.Bar;
+
+    // ---- Cuota / tokens de servicio de IA ----
+    public bool ShowAiUsage { get; set; } = false;
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public AiProvider AiProvider { get; set; } = AiProvider.Claude;
+
+    public string EncryptedAiApiKey { get; set; } = "";
+    public string AiCustomEndpoint { get; set; } = "";
+    public long AiManualLimitTokens { get; set; } = 0;
+    public long AiManualUsedTokens { get; set; } = 0;
+
+    public string GetAiApiKey() => Interop.Win32.UnprotectString(EncryptedAiApiKey);
+    public void SetAiApiKey(string key) => EncryptedAiApiKey = Interop.Win32.ProtectString(key.Trim());
 
     /// <summary>Prioridad: app maximizada > música sonando > escritorio.</summary>
     public IslandMode EffectiveMode(bool isPlaying, bool hasMaximized)

@@ -14,7 +14,8 @@ namespace DynamicIsland;
 
 public partial class MainWindow : Window
 {
-    private const double ExpandedW = 424, ExpandedH = 160, ExpandedR = 30, ExpandedTop = 6;
+    private const double ExpandedW = 424, ExpandedR = 30, ExpandedTop = 6;
+    private double ExpandedH => _settings.ShowAiUsage ? 208 : 160;
     private (double w, double h, double r, double top) _fromDims = (130, 34, 17, 6), _toDims = (130, 34, 17, 6);
     private bool _modeInitialized;
     private readonly SpringAnimator _modeSpring = new(1) { Stiffness = 260, Damping = 30, Mass = 1 };
@@ -23,10 +24,12 @@ public partial class MainWindow : Window
 
     private readonly SpringAnimator _spring = new(0) { Stiffness = 380, Damping = 30, Mass = 1 };
     private readonly MediaService _media = new();
+    private readonly AiUsageService _ai = new();
     private readonly DispatcherTimer _clockTimer = new();
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _collapseDelay = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private readonly DispatcherTimer _aiTimer = new() { Interval = TimeSpan.FromMinutes(5) };
 
     private IntPtr _hwnd;
     private IslandMode _mode = IslandMode.Classic;
@@ -41,24 +44,27 @@ public partial class MainWindow : Window
         _settings = settings;
         InitializeComponent();
         Width = 460;
-        Height = 200;
+        Height = 230;
         Loaded += OnLoaded;
         SourceInitialized += OnSourceInitialized;
 
         Pill.MouseEnter += (_, _) => { _collapseDelay.Stop(); SetExpanded(true); };
         Pill.MouseLeave += (_, _) => { _collapseDelay.Stop(); _collapseDelay.Start(); };
         _collapseDelay.Tick += (_, _) => { _collapseDelay.Stop(); if (!Pill.IsMouseOver) SetExpanded(false); };
-        _settings.Changed += () => { ApplyMode(); UpdateClock(); };
+        _settings.Changed += () => { ApplyMode(); UpdateClock(); OnAiChanged(); _ = _ai.RefreshAsync(_settings); };
 
         PrevBtn.Click += async (_, _) => await _media.PreviousAsync();
         PlayBtn.Click += async (_, _) => await _media.TogglePlayPauseAsync();
         NextBtn.Click += async (_, _) => await _media.NextAsync();
         SettingsBtn.Click += (_, _) => SettingsWindow.ShowSingle(_settings);
+        AiRefreshBtn.Click += async (_, _) => await _ai.RefreshAsync(_settings);
+        AiProgressTrack.SizeChanged += (_, _) => UpdateAiProgressBar();
 
         _clockTimer.Tick += (_, _) => UpdateClock();
         _progressTimer.Tick += (_, _) => UpdateProgress();
         _topmostTimer.Tick += (_, _) => Win32.ReassertTopmost(_hwnd);
         _foregroundTimer.Tick += (_, _) => PollForeground();
+        _aiTimer.Tick += async (_, _) => await _ai.RefreshAsync(_settings);
         SystemEvents.DisplaySettingsChanged += (_, _) => Dispatcher.BeginInvoke(PositionWindow);
     }
 
@@ -76,9 +82,12 @@ public partial class MainWindow : Window
         UpdateClock();
         _topmostTimer.Start();
         _foregroundTimer.Start();
+        _ai.Changed += OnAiChanged;
+        _aiTimer.Start();
         _media.Changed += OnMediaChanged;
         try { await _media.InitializeAsync(); } catch { /* GSMTC no disponible */ }
         OnMediaChanged();
+        await _ai.RefreshAsync(_settings);
     }
 
     private void PositionWindow()
@@ -157,11 +166,11 @@ public partial class MainWindow : Window
         }
     }
 
-    private static (double w, double h, double r, double top) DimsFor(IslandMode mode) => mode switch
+    private (double w, double h, double r, double top) DimsFor(IslandMode mode) => mode switch
     {
         IslandMode.Bar => (110d, 5d, 2.5d, 2d),
-        IslandMode.Wide => (300d, 38d, 19d, 6d),
-        _ => (130d, 34d, 17d, 6d)
+        IslandMode.Wide => (_settings.ShowAiUsage ? 364d : 300d, 38d, 19d, 6d),
+        _ => (_settings.ShowAiUsage ? 200d : 130d, 34d, 17d, 6d)
     };
 
     private static double Lerp(double a, double b, double t) => a + (b - a) * t;
@@ -177,15 +186,17 @@ public partial class MainWindow : Window
     private void ApplyMode()
     {
         var newMode = _settings.EffectiveMode(_media.IsPlaying, _hasMaximized);
+        var newDims = DimsFor(newMode);
         bool first = !_modeInitialized;
-        if (!first && newMode == _mode) return;
+        if (!first && newMode == _mode && newDims == _toDims) return;
 
-        var from = first ? DimsFor(newMode) : CurrentCollapsed();
+        var from = first ? newDims : CurrentCollapsed();
         _mode = newMode;
         _fromDims = from;
-        _toDims = DimsFor(newMode);
+        _toDims = newDims;
         _modeInitialized = true;
 
+        WideView.Width = _settings.ShowAiUsage ? 364d : 300d;
         CollapsedView.Visibility = _mode == IslandMode.Classic ? Visibility.Visible : Visibility.Collapsed;
         WideView.Visibility = _mode == IslandMode.Wide ? Visibility.Visible : Visibility.Collapsed;
 
@@ -289,4 +300,81 @@ public partial class MainWindow : Window
 
     private static string Format(TimeSpan t)
         => t.TotalHours >= 1 ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}" : $"{(int)t.TotalMinutes}:{t.Seconds:00}";
+
+    // ---------- Cuota de IA ----------
+    private void OnAiChanged()
+    {
+        bool show = _settings.ShowAiUsage;
+        AiRow.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        CollapsedAiBadge.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        WideAiBadge.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!show) return;
+
+        var q = _ai.Current;
+        AiProviderText.Text = q.ProviderName;
+        AiStatusText.Text = string.IsNullOrEmpty(q.ResetText) ? q.StatusText : q.ResetText;
+
+        string badge;
+        string detail;
+        if (q.RemainingTokens.HasValue && q.LimitTokens is > 0)
+        {
+            string remStr = AiUsageService.FormatTokens(q.RemainingTokens.Value);
+            string limStr = AiUsageService.FormatTokens(q.LimitTokens.Value);
+            badge = q.RemainingPercent.HasValue ? $"\u2726 {q.RemainingPercent.Value:0}%" : $"\u2726 {remStr}";
+            detail = q.LimitTokens == 100 && q.RemainingPercent.HasValue
+                ? $"{q.RemainingPercent.Value:0}%"
+                : $"{remStr} / {limStr}";
+        }
+        else if (q.RemainingPercent.HasValue)
+        {
+            badge = $"\u2726 {q.RemainingPercent.Value:0}%";
+            detail = $"{q.RemainingPercent.Value:0}%";
+        }
+        else
+        {
+            badge = "\u2726 --";
+            detail = "--";
+        }
+
+        CollapsedAiBadge.Text = badge;
+        WideAiBadge.Text = badge;
+        AiRemainingText.Text = detail;
+
+        double pct = q.RemainingPercent ?? 0;
+        UpdateAiProgressBar();
+
+        if (q.HasData && pct < 15)
+        {
+            var red = new SolidColorBrush(Color.FromRgb(0xEF, 0x44, 0x44));
+            AiProgressFill.Background = red;
+            CollapsedAiBadge.Foreground = red;
+            WideAiBadge.Foreground = red;
+        }
+        else if (q.HasData && pct < 35)
+        {
+            var amber = new SolidColorBrush(Color.FromRgb(0xFB, 0xBF, 0x24));
+            AiProgressFill.Background = amber;
+            CollapsedAiBadge.Foreground = amber;
+            WideAiBadge.Foreground = amber;
+        }
+        else
+        {
+            AiProgressFill.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "IslandAccent");
+            CollapsedAiBadge.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "IslandAccent");
+            WideAiBadge.SetResourceReference(System.Windows.Controls.TextBlock.ForegroundProperty, "IslandAccent");
+        }
+    }
+
+    private void UpdateAiProgressBar()
+    {
+        var q = _ai.Current;
+        if (!_settings.ShowAiUsage || !q.HasData)
+        {
+            AiProgressFill.Width = 0;
+            return;
+        }
+        double barMax = AiProgressTrack.ActualWidth > 0 ? AiProgressTrack.ActualWidth : 260;
+        double pct = q.RemainingPercent ?? 0;
+        AiProgressFill.Width = barMax * Math.Clamp(pct / 100.0, 0, 1);
+    }
 }

@@ -5,7 +5,7 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" ShowInTaskbar="False" ShowActivated="False"
         Topmost="True" Focusable="False"
-        Width="440" Height="190"
+        Width="440" Height="230"
         UseLayoutRounding="True" SnapsToDevicePixels="True">
 
     <Grid>
@@ -23,14 +23,17 @@
                                FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="14" FontWeight="SemiBold"/>
                     <Border x:Name="PlayingDot" Width="7" Height="7" CornerRadius="3.5" Margin="9,1,0,0"
                             Background="{DynamicResource IslandAccent}" Visibility="Collapsed"/>
+                    <TextBlock x:Name="CollapsedAiBadge" Visibility="Collapsed" Margin="9,0,0,0" VerticalAlignment="Center"
+                               Foreground="{DynamicResource IslandAccent}" FontSize="12" FontWeight="SemiBold"/>
                 </StackPanel>
 
-                <!-- Colapsado modo ancho: carátula | título | hora -->
+                <!-- Colapsado modo ancho: carátula | título | cuota IA | hora -->
                 <Grid x:Name="WideView" Width="300" Height="38" Visibility="Collapsed"
                       HorizontalAlignment="Center" VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Border Width="26" Height="26" CornerRadius="6" ClipToBounds="True" Margin="9,0,0,0"
@@ -42,17 +45,20 @@
                             <Image x:Name="WideCover" Stretch="UniformToFill"/>
                         </Grid>
                     </Border>
-                    <TextBlock x:Name="WideTitle" Grid.Column="1" Margin="10,0,10,0" VerticalAlignment="Center"
+                    <TextBlock x:Name="WideTitle" Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center"
                                Foreground="{DynamicResource IslandSecondary}" FontSize="12.5" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock x:Name="WideTime" Grid.Column="2" Margin="0,0,16,0" VerticalAlignment="Center"
+                    <TextBlock x:Name="WideAiBadge" Grid.Column="2" Margin="0,0,10,0" VerticalAlignment="Center"
+                               Visibility="Collapsed" Foreground="{DynamicResource IslandAccent}" FontSize="12" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="WideTime" Grid.Column="3" Margin="0,0,16,0" VerticalAlignment="Center"
                                Foreground="{DynamicResource IslandPrimary}" FontSize="14" FontWeight="SemiBold"/>
                 </Grid>
                 </Grid>
 
                 <!-- Expandido -->
                 <Grid x:Name="ExpandedView" Opacity="0" IsHitTestVisible="False"
-                      Width="408" Height="150" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Top">
+                      Width="408" Height="Auto" Margin="0" HorizontalAlignment="Center" VerticalAlignment="Top">
                     <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
@@ -114,6 +120,37 @@
                         <Button x:Name="PlayBtn" Style="{StaticResource IconButton}" Content="&#xE768;" Margin="10,0" FontSize="24"/>
                         <Button x:Name="NextBtn" Style="{StaticResource IconButton}" Content="&#xE893;"/>
                     </StackPanel>
+
+                    <!-- Cuota / tokens de IA -->
+                    <Border x:Name="AiRow" Grid.Row="3" Margin="16,4,16,10" Padding="10,7"
+                            CornerRadius="12" Background="#16FFFFFF" Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#x2726;" Foreground="{DynamicResource IslandAccent}" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="AiProviderText" Text="Claude" Foreground="{DynamicResource IslandPrimary}"
+                                               FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <TextBlock x:Name="AiStatusText" Foreground="{DynamicResource IslandSecondary}"
+                                               FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <Grid x:Name="AiProgressTrack" Height="4" Margin="0,6,0,0">
+                                    <Border CornerRadius="2" Background="{DynamicResource IslandTrack}"/>
+                                    <Border x:Name="AiProgressFill" CornerRadius="2" HorizontalAlignment="Left" Width="0"
+                                            Background="{DynamicResource IslandAccent}"/>
+                                </Grid>
+                            </StackPanel>
+                            <TextBlock x:Name="AiRemainingText" Grid.Column="1" VerticalAlignment="Center" Margin="0,0,6,0"
+                                       Foreground="{DynamicResource IslandPrimary}" FontSize="12.5" FontWeight="SemiBold"/>
+                            <Button x:Name="AiRefreshBtn" Grid.Column="2" Style="{StaticResource IconButton}" Content="&#xE72C;"
+                                    FontSize="12" Width="26" Height="26" ToolTip="Actualizar cuota de IA"
+                                    Foreground="{DynamicResource IslandSecondary}"/>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Grid>
         </Border>
